@@ -1,17 +1,17 @@
 # Tracing an Intrusion: An End-to-End Threat Hunt with a SIEM
 
-> *This writeup details my methodology for completing the "Hunting For Stuxbot" module from Hack The Box Academy.*
+> *This writeup details my methodology for completing the "Introduction to Threat Hunting" module from Hack The Box Academy.*
 
 ## 1. The Challenge: An Overview
 
-In this investigation, I acted as a security analyst for a simulated enterprise network. My objective was to use a SIEM (Kibana) to analyze endpoint (Sysmon) and network (Zeek) logs to determine if the network had been compromised by a known malware campaign. The goal was to trace the full attack chain, from initial access to lateral movement.
+In this investigation, I acted as a security analyst for a simulated enterprise network. My objective was to use a SIEM (Kibana) to analyze endpoint (Sysmon) and network (Zeek) logs to determine if the network had been compromised. The goal was to trace the full attack chain by writing and executing a series of precise KQL queries.
 
 ---
 
 ## 2. Tools Used
 
 * **SIEM**: Kibana / ELK Stack
-* **Endpoint Telemetry**: Sysmon
+* **Endpoint Telemetry**: Sysmon, Windows Event Logs
 * **Network Telemetry**: Zeek
 * **Query Language**: KQL (Kibana Query Language)
 
@@ -19,66 +19,90 @@ In this investigation, I acted as a security analyst for a simulated enterprise 
 
 ## 3. Investigation & Methodology
 
-The hunt was structured to follow a logical progression of the cyber kill chain, starting with the initial point of compromise.
+The hunt was structured to first confirm the initial compromise, then analyze the payload's actions, and finally broaden the search to identify all related adversary TTPs.
 
-### 3.1. Initial Access: Finding the Phishing Lure
+### 3.1. Initial Access & Execution
 
-The investigation began with the hypothesis that the compromise originated from a malicious OneNote file. I started by searching for the primary Indicator of Compromise (IOC), the filename `invoice.one`, in the Sysmon logs. I used `Event ID 11` (FileCreate) as it provides ground truth for file creation on the host.
+The investigation began by hunting for the primary IOC, the filename `invoice.one`. I then traced its execution flow.
 
 ```kql
 event.code:11 AND file.name:invoice.one*
 ```
-
-This query returned a hit, confirming the file was created on workstation `WS001` in the user Bob's `Downloads` directory. This served as the initial anchor point for the entire investigation.
-
-![Kibana result showing the Sysmon Event ID 11 for invoice.one](https://i.imgur.com/your_image_placeholder_1.png)
-*Caption: The initial hit in Kibana, confirming the creation of the malicious OneNote file on the endpoint.*
-
-### 3.2. Execution: Unraveling the Process Chain
-
-With the file on the system, the next logical question was, "Was it executed?" I hypothesized that the user would have opened the file with `ONENOTE.EXE`. Therefore, my next step was to hunt for any suspicious child processes created by the OneNote process.
+This query confirmed the file was downloaded to `WS001`. The next logical step was to see if it was executed. I hunted for any suspicious child processes created by the `ONENOTE.EXE` process.
 
 ```kql
 event.code:1 AND process.parent.name:"ONENOTE.EXE"
 ```
 
-This query revealed a clear and malicious process lineage. The logs showed that `ONENOTE.EXE` launched `cmd.exe`, which then executed a file named `invoice.bat` from a temporary directory. The final step in the chain was `invoice.bat` launching `powershell.exe` with a long, suspicious command line. This confirmed that the initial file was malicious and had successfully executed its first-stage payload.
+This query revealed the malicious process lineage: `ONENOTE.EXE` → `cmd.exe` → `powershell.exe`, confirming the file was executed and launched a PowerShell downloader.
 
-![The process creation chain in Kibana](https://i.imgur.com/your_image_placeholder_2.png)
-*Caption: The process creation chain in Kibana, showing how OneNote was used to launch PowerShell.*
+### 3.2. C2 & Lateral Movement (PsExec)
 
-### 3.3. C2 Identification: Pivoting from Endpoint to Network
-
-The PowerShell command line clearly indicated it was attempting to download content from `pastebin.com`. To understand the full scope of the network activity, I needed to identify the attacker's Command and Control (C2) server.
-
-I pivoted my investigation from endpoint logs to network telemetry, specifically the **Zeek** logs which capture DNS traffic. I built a query to find all DNS requests made by the compromised host, `WS001`, around the time of the PowerShell execution, while filtering out common noise.
-
-```kql
-source.ip:192.168.28.130 AND dns.question.name:* AND NOT dns.question.name:(*.google.com OR *.msftncsi.com)
-```
-
-This query immediately revealed DNS requests to a dynamic DNS provider, **`ngrok.io`**. Ngrok is a legitimate tunneling service, but it is frequently abused by attackers to mask their C2 traffic behind a trusted domain and bypass simple firewall rules, making this a high-confidence indicator of malicious activity.
-
-### 3.4. Lateral Movement: Following the Attacker
-
-Having confirmed C2, the final step was to determine if the attacker had moved to other systems. I searched for the hash of the downloaded payload (`default.exe`) across all hosts in the environment.
+To understand the network activity, I pivoted to **Zeek** logs to analyze DNS traffic from `WS001`, which revealed the attacker's C2 server (`ngrok.io`). Next, I searched for the hash of the downloaded payload (`default.exe`) across all hosts to see if the attacker had moved.
 
 ```kql
 process.hash.sha256:018d37cbd3878258c29db3bc3f2988b6ae688843801b9abc28e6151141ab66d4
 ```
-The query returned a hit on a second server, `PKI`. To understand how the payload was executed there, I examined the parent process of this event. The parent process was **`PSEXESVC.exe`**. This is the service executable for the legitimate Microsoft administration tool PsExec. Its presence here confirms that the attacker used PsExec as a "living-off-the-land" binary to pivot from `WS001` and execute code on the `PKI` server.
+The query returned a hit on a second server, `PKI`. I examined the parent process of this event and found **`PSEXESVC.exe`**, the service executable for the legitimate tool PsExec, confirming the attacker used it to move laterally.
 
-![Lateral Movement via PsExec](https://i.imgur.com/your_image_placeholder_6.png)
-*Caption: The Sysmon log on the PKI server showing the payload being executed by PSEXESVC.exe, confirming lateral movement.*
+### 3.3. Post-Exploitation Analysis
+
+With the attacker's primary payload (`default.exe`) identified, the next phase was to hunt for its specific actions based on the lab's objectives.
+
+* **Payload Dropping:** I first investigated the actions of `default.exe`. By querying for all events related to this process, I discovered a file creation event for a malicious VBS script, **`XceGuhkzaTrOy.vbs`**.
+
+    ```kql
+    process.name:"default.exe" and file.extension:"vbs"
+    ```
+
+* **Credential Dumping:** Next, to hunt for credential dumping, I searched the logs for any execution of the tool **`mimikatz.exe`**. This query returned a Sysmon `Event ID 1` log where I could inspect the `process.args` field to capture the exact arguments used:
+
+    ```kql
+    process.name:"mimikatz.exe"
+    ```
+    The query confirmed the arguments were **`lsadump::dcsync /domain:eagle.local /all /csv`**.
+
+* **Discovery:** Finally, to identify discovery activity, I analyzed PowerShell script block logs (`Event ID 4104`). I searched the script content for the term "mimikatz" and found a log entry explicitly attributing the malicious code to the **PowerView** framework.
+
+    ```kql
+    event.code:4104 AND powershell.script_block_text:"*mimikatz*"
+    ```
+
+### 3.4. Hunting for Additional TTPs
+
+With the full initial compromise understood, I broadened my hunt to find other known attacker techniques from the skills assessment.
+
+* **Lateral Tool Transfer:** I hunted for files dropped in the common staging directory `C:\Users\Public`, a known attacker TTP.
+    ```kql
+    file.directory:"C:\\Users\\Public"
+    ```
+    This query revealed the tool **`rubeus.exe`** being transferred by the user **`svc-sql1`**.
+
+* **Persistence:** Citing the MITRE ATT&CK framework, I hunted for **Registry Run Key** modifications by querying for `Event ID 13` in common autostart locations.
+    ```kql
+    event.code:13 AND message:"*\\Software\\Microsoft\\Windows\\CurrentVersion\\Run*"
+    ```
+    After filtering out known good entries, the analysis identified the first malicious persistence action with the value **`LgvHsviAUVTsIN`**.
+
+* **PowerShell Remoting:** I hunted for an alternative lateral movement technique by searching for the `Enter-PSSession` cmdlet, which is used to establish a PowerShell Remoting session.
+    ```kql
+    message:"*Enter-PSSession*"
+    ```
+    This query returned a single hit, confirming that the user **`svc-sql1`** performed lateral movement towards the Domain Controller.
+---
+
+## 4. Lessons Learned
+
+During the 'Lateral Tool Transfer' hunt, I initially went down a rabbit hole searching for a `user.name` that started with 'r'. After my queries failed to produce the expected result, I re-read the task carefully and realized it was the **tool's name**, not the username, that was the key detail. This was a crucial lesson in the importance of precise reading of intelligence and not jumping to conclusions during an investigation.
 
 ---
 
-## 4. Conclusion & Key Findings
+## 5. Conclusion & Key Findings
 
-This investigation successfully traced a multi-stage intrusion by using KQL queries to pivot between endpoint (Sysmon) and network (Zeek) data sources.
+This investigation successfully traced a multi-stage intrusion and identified multiple post-exploitation activities by writing specific KQL queries.
 
-* **Initial Access**: The attacker gained entry via a malicious OneNote file (`invoice.one`).
-* **Execution**: The attacker used a malicious batch script and PowerShell to download a second-stage payload.
-* **Lateral Movement**: The attacker moved from `WS001` to the `PKI` server using the legitimate administration tool, PsExec.
-
-This project demonstrates a complete investigative workflow, from forming a hypothesis and writing initial queries to pivoting between data sources and correlating events to understand the full scope of an attack. The investigation successfully answered all of the lab's core questions by identifying the attacker's TTPs and key IOCs, including the **C2 domain (`ngrok.io`)** and the **lateral movement tool (`PsExec`)**.
+* **Initial Access & Execution**: The attacker gained entry via a malicious OneNote file.
+* **Credential Access & Discovery**: The attacker used **Mimikatz** for credential dumping and **PowerView** for AD reconnaissance.
+* **Lateral Movement**: The attacker used two distinct methods: **PsExec** and **PowerShell Remoting**.
+* **Persistence**: The attacker established persistence using a **Registry Run Key**.
+* **Tool Staging**: The attacker transferred tools, including `rubeus.exe`, into the `C:\Users\Public` directory.
