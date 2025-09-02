@@ -1,6 +1,6 @@
 # Tracing an Intrusion: An End-to-End Threat Hunt with a SIEM
 
-> *This writeup details my methodology for completing the "Hunting For Stuxbot" module from Hack The Box Academy. The scenario and data were provided by HTB; the analysis and methodology are my own.*
+> *This writeup details my methodology for completing the "Hunting For Stuxbot" module from Hack The Box Academy.*
 
 ## 1. The Challenge: An Overview
 
