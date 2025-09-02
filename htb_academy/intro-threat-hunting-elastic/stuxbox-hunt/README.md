@@ -1,6 +1,6 @@
 # Tracing an Intrusion: An End-to-End Threat Hunt in an ELK Stack
 
-> **Note:** This write-up covers the "Hunting for Stuxbot" and "Skills Assessment" sections from the "Introduction to Threat Hunting & Hunting With Elastic" modules on Hack The Box Academy. The scenario and log data were provided by HTB; the analysis and methodology are my own.
+> **Note:** This write-up covers the "Hunting for Stuxbot" and "Skills Assessment" sections from the "Introduction to Threat Hunting & Hunting With Elastic" modules on Hack The Box Academy.
 
 ## 1. Objective
 
