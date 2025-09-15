@@ -27,12 +27,15 @@ The first step was to analyze the web page's source code, where I discovered a s
 
 ![](./images/deobfuscate-skills-1.png)
 
+![](./images/deobfuscate-skills-2.png)
+
+![](./images/deobfuscate-skills-3.png)
+
 ### 3.2. Deobfuscation
 
 Upon inspection, the code was clearly "packed." I copied the entire block of code and pasted it into an online JavaScript unpacker. The tool successfully deobfuscated the code, revealing its readable logic and a second, embedded flag variable: `HTB{n3v3r_run_0bfu5c473d_c0d3!}`.
 
-![Deobfuscated JavaScript](./images/js_deobfuscated_code.png)
-*Caption: The deobfuscated JavaScript code, revealing readable functions and variables.*
+![](./images/deobfuscate-skills-4.png)
 
 ### 3.3. API Analysis & Replication
 
@@ -44,9 +47,12 @@ curl -s http://[Target IP]:[Port]/keys.php -X POST
 
 This command returned a long, hexadecimal string: `4150495f70336e5f37333537316e365f31355f66756e`.
 
+
 ### 3.4. Decoding & Final Exploitation
 
 I used a cipher identifier to confirm the string was hexadecimal. I then used the `xxd` command-line utility in Linux to decode it.
+
+![](./images/deobfuscate-skills-5.png)
 
 ```bash
 echo '4150495f70336e5f37333537316e365f31355f66756e' | xxd -p -r
@@ -56,6 +62,9 @@ This revealed the plaintext secret key: `API_p3n_73571n6_15_fun`. For the final 
 ```bash
 curl -s http://[Target IP]:[Port]/keys.php -X POST -d "key=API_p3n_73571n6_15_fun"
 ```
+
+![](./images/deobfuscate-skills-6.png)
+
 ---
 
 ## 4. Lessons Learned
