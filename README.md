@@ -13,3 +13,7 @@
 
 * **Active Directory Security**
     * [Deconstructing the Domain](./htb_academy/active_directory_security/): Executing and detecting a full Active Directory compromise, from **BloodHound** recon to **Golden Ticket** creation.
+
+* **JavaScript Deobfuscation & Web Analysis**
+    * [Foundation Techniques](./htb_academy/javascript_deobfuscation/foundation_techniques/): An overview of core client-side analysis skills, including deobfuscation and API requests.
+    * [Skills Assessment](./htb/academy/javascript_deobfuscation/skills_assessment): An end-to-end investigation of an obfuscated web application.
