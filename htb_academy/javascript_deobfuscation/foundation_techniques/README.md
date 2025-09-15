@@ -25,8 +25,7 @@ The investigation was broken into four distinct phases, each focused on a core s
 
 The first task was to perform basic reconnaissance on a web page. By simply viewing the HTML source code, I was able to identify sensitive information left by a developer in the comments.
 
-![HTML Comment Flag](./images/)
-*Caption: The flag found directly within the HTML source code comments.*
+![HTML Comment Flag](./images/deobfuscate-source-code.png)
 
 ### 3.2. JavaScript Deobfuscation
 
