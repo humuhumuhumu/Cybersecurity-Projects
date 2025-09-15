@@ -25,12 +25,14 @@ The investigation was broken into four distinct phases, each focused on a core s
 
 The first task was to perform basic reconnaissance on a web page. By simply viewing the HTML source code, I was able to identify sensitive information left by a developer in the comments.
 
-![HTML Comment Flag](./images/html_comment_flag.png)
+![HTML Comment Flag](./images/)
 *Caption: The flag found directly within the HTML source code comments.*
 
 ### 3.2. JavaScript Deobfuscation
 
 The next challenge involved a JavaScript file (`secret.js`) that was obfuscated. Upon inspection, I identified it as being "packed," a common obfuscation technique. I copied the entire block of packed code and pasted it into a popular online JavaScript unpacker, which successfully deobfuscated the code and revealed the hidden flag.
+
+![](./images/deobfuscate-unpack-secret.png)
 
 ### 3.3. API Interrogation with cURL
 
@@ -44,6 +46,8 @@ This command returned a Base64-encoded string, `N2gxNV8xNV9hX3MzY3IzN19tMzU1NGcz
 ### 3.4. Decoding Payloads
 
 The final step was to decode the string and use it. I first used an online cipher identifier and then the `base64` command-line utility in Linux to decode the string.
+
+![](./images/deobfuscate-cipher-id.png)
 
 ```bash
 echo 'N2gxNV8xNV9hX3MzY3IzN19tMzU1NGcz' | base64 -d
