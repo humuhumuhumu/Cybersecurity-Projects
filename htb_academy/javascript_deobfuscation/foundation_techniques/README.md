@@ -1,4 +1,4 @@
-# Foundational Web Analysis: Deobfuscation, API Interrogation, & Decoding
+# Foundational Web Analysis: Deobfuscation, API Interrogation & Decoding
 
 > *This writeup details my methodology for completing the foundational sections of the "JavaScript Deobfuscation" module from Hack The Box Academy.*
 
