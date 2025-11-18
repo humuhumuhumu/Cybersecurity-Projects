@@ -3,8 +3,8 @@
 * **Malware Analysis**
     * [Static Analysis of `orange.exe`](./htb_academy/malware_analysis/1_static_analysis_orange_exe/): A teardown of an obfuscated dropper using IDA Freeware.
     * [Dynamic Analysis of `shell.exe`](./htb_academy/malware_analysis/2_dynamic_analysis_shell_exe/): Bypassing sandbox checks and analyzing C2 traffic with a debugger.
-    * [Detection Rule Creation with Yara](./htb_academy/malware-analysis/3_creating-detection-rules/): Automating malware signature creation with `yarGen.py` and demonstrating the critical role of analyst refinement.
-    * [Comprehensive Analysis of `apple.exe`](./htb_academy/malware-analysis/4_skills_assessment_apple-exe/): A multi-faceted investigation combining static, dynamic, and code-level techniques.
+    * [Detection Rule Creation with Yara](./htb_academy/malware_analysis/3_creating-detection-rules/): Automating malware signature creation with `yarGen.py` and demonstrating the critical role of analyst refinement.
+    * [Comprehensive Analysis of `apple.exe`](./htb_academy/malware_analysis/4_skills_assessment_apple-exe/): A multi-faceted investigation combining static, dynamic, and code-level techniques.
 
 * **Threat Hunting & SIEM**
     * [Splunk Log Analysis Primer](./htb_academy/splunk_log_analysis/1_foundational_log_analysis/): A foundational log analysis in **Splunk**, using core SPL commands to answer investigative questions.
